@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>小星星的悄悄话</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: sans-serif;
+            font-size: 18px;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            min-height: 100vh;
+            background: #0a0a0f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            color: #ccc;
+        }
+
+        /* 恐怖黑屏遮罩 */
+        .terror-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .terror-text {
+            color: #d80000;
+            font-size: clamp(14px, 3vw, 18px);
+            letter-spacing: 6px;
+            white-space: nowrap;
+        }
+
+        /* 核心自适应盒子 */
+        .box {
+            background: #1a1a1e;
+            width: 100%;
+            height: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            padding: 25px 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 10;
+            transition: opacity 0.3s;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+
+        .title {
+            font-size: clamp(22px, 4vw, 24px);
+            margin-bottom: 15px;
+            text-align: center;
+            color: #ddd;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .progress {
+            text-align: center;
+            font-size: clamp(12px, 2.5vw, 13px);
+            color: #888;
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+
+        .question {
+            font-size: clamp(16px, 3vw, 18px);
+            line-height: 1.6;
+            color: #ccc;
+            min-height: 35px;
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .option {
+            padding: 14px;
+            border: 1px solid #444;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: clamp(16px, 2.8vw, 18px);
+            background: #222;
+            transition: all 0.2s;
+            line-height: 1.4;
+            flex-shrink: 0;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+            color: #aaa;
+        }
+
+        .option:hover {
+            background: #2a2a2e;
+            border-color: #8b0000;
+        }
+
+        .option.selected {
+            background: #3a1a1a;
+            border-color: #a44;
+            color: #ddd;
+        }
+
+        .option.locked {
+            background: #1a1a1a !important;
+            color: #555 !important;
+            cursor: not-allowed !important;
+            border-color: #333 !important;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            flex-shrink: 0;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: clamp(16px, 2.5vw, 18px);
+            cursor: pointer;
+            transition: 0.2s;
+            flex: 1;
+            max-width: 120px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .prev-btn {
+            background: #333;
+            color: #ccc;
+            margin-right: 10px;
+        }
+
+        .next-btn {
+            background: #8b0000;
+            color: #fff;
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* 第8题漂浮文字 */
+        .float-text {
+            position: fixed;
+            color: #ff4444;
+            font-weight: bold;
+            background: transparent;
+            padding: 4px 10px;
+            border-radius: 10px;
+            pointer-events: none;
+            z-index: 9999;
+            white-space: nowrap;
+            text-shadow: 0 0 8px #a00;
+            font-size: clamp(14px, 2vw, 16px);
+        }
+
+        /* 第25题 全覆盖层级 */
+        .peep-text {
+            position: fixed;
+            color: #ff2b2b;
+            opacity: 0.18;
+            font-size: clamp(16px, 2.2vw, 18px);
+            pointer-events: none;
+            z-index: 99;
+            white-space: nowrap;
+            animation: slowFade 4s infinite alternate;
+        }
+
+        .q25-gray-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(20, 20, 20, 0.35);
+            pointer-events: none;
+            z-index: 98;
+        }
+
+        @keyframes slowFade {
+            0% { opacity: 0.12; }
+            100% { opacity: 0.25; }
+        }
+
+        /* 全屏打字 */
+        .fullscreen-love {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 99999;
+            padding: 20px;
+            font-size: clamp(18px, 3vw, 20px);
+            color: #ff0000;
+            font-weight: bold;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            overflow: hidden;
+        }
+
+        /* 初始提示框 */
+        .start-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(90vw, 280px);
+            background: #1a1a1e;
+            border: 2px solid #444;
+            border-radius: 12px;
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px 15px;
+            gap: 8px;
+            color: #ccc;
+        }
+
+        .start-text {
+            font-size: clamp(14px, 2.8vw, 16px);
+            color: #ccc;
+            line-height: 1.8;
+            text-align: center;
+        }
+
+        .tiny-red-tip {
+            font-size: clamp(10px, 2vw, 9px);
+            color: #ff4444;
+            text-align: center;
+            line-height: 1.4;
+            margin: 4px 0;
+        }
+
+        .start-btn {
+            background: #8b0000;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-size: clamp(14px, 2.5vw, 16px);
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        .diary-wrap {
+            display: none;
+            width: 100%;
+            height: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            padding: 25px 20px;
+            border-radius: 12px;
+            background: #1a1a1e;
+            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 10;
+            overflow: hidden;
+            flex-direction: column;
+            border: 1px solid #333;
+            color: #ccc;
+        }
+
+        .diary-date {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            font-size: clamp(12px, 2.5vw, 14px);
+            color: #888;
+        }
+
+        .diary-content {
+            margin-top: 25px;
+            line-height: 2;
+            font-size: clamp(14px, 2.7vw, 16px);
+            color: #bbb;
+            letter-spacing: 1px;
+            height: calc(100% - 80px);
+            overflow-y: auto;
+            padding-bottom: 10px;
+        }
+
+        .diary-page1, .diary-page2, .diary-page3, .diary-page4 {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .diary-page2, .diary-page3, .diary-page4 {
+            display: none;
+        }
+
+        .diary-page4 {
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px 30px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .diary-page4 .diary-content {
+            width: 100%;
+            height: auto;
+            margin: 0;
+            font-size: clamp(14px, 3.5vw, 16px);
+            line-height: 2.2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .page-next, .page-prev {
+            position: absolute;
+            font-size: clamp(18px, 4vw, 20px);
+            cursor: pointer;
+            color: #aaa;
+            z-index: 1;
+            bottom: 15px;
+        }
+
+        .page-prev { left: 20px; }
+        .page-next { right: 20px; }
+
+        .black-full-text {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 99999999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #ff0000;
+            font-size: clamp(20px, 5vw, 24px);
+            font-weight: bold;
+            gap: 30px;
+        }
+
+        .red-confirm-btn {
+            background: #ff0000;
+            color: #fff;
+            border: none;
+            padding: 8px 22px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: clamp(11px, 2.5vw, 12px);
+        }
+
+        .end-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1a1a1e;
+            padding: 35px 30px;
+            border-radius: 12px;
+            z-index: 99999999;
+            text-align: center;
+            width: min(90vw, 320px);
+            border: 2px solid #444;
+            color: #ccc;
+        }
+
+        .q16-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(90vw, 200px);
+            background: #1a1a1e;
+            border: 3px solid #ff0000;
+            border-radius: 12px;
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            gap: 20px;
+        }
+
+        .q16-text {
+            font-size: clamp(14px, 3vw, 16px);
+            color: #ddd;
+            font-weight: bold;
+        }
+
+        .q16-btn {
+            background: #ff0000;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 18px;
+            font-size: clamp(12px, 2.5vw, 14px);
+            cursor: pointer;
+        }
+
+        .submit-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999999;
+        }
+
+        .submit-modal-inner {
+            background: #1a1a1e;
+            padding: 35px 30px;
+            border-radius: 12px;
+            text-align: center;
+            width: min(90vw, 320px);
+            border: 2px solid #444;
+            box-sizing: border-box;
+            color: #ccc;
+        }
+
+        .submit-btn {
+            padding: 10px 20px;
+            border: none;
+            background: #8b0000;
+            color: #fff;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 15px 0 8px;
+            font-size: clamp(14px, 2.5vw, 16px);
+            transition: all 0.2s;
+        }
+
+        .refuse-tip {
+            color: #ff4444;
+            font-size: clamp(10px, 2.5vw, 12px);
+        }
+
+        .black-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 9999999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: #ff0000;
+            font-size: clamp(16px, 4vw, 20px);
+            font-weight: bold;
+            text-align: center;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="box" id="mainBox">
+        <div class="title">✨ 小星星的悄悄话 ✨</div>
+        <div class="progress" id="progress">第 1 题 / 共 30 题</div>
+        <div class="question" id="question"></div>
+        <div class="options" id="options"></div>
+        <div class="btn-group">
+            <button class="btn prev-btn" id="prevBtn">上一题</button>
+            <button class="btn next-btn" id="nextBtn">下一题</button>
+        </div>
+    </div>
+
+    <div class="diary-wrap" id="diaryWrap">
+        <div class="diary-page1" id="diaryPage1">
+            <div class="diary-date">04.24 阴</div>
+            <div class="diary-content">
+                （大片黑笔划掉无法辨认）<br>
+                今天又看<span style="color:red;">到</span>小星星了，在窗<span style="color:red;">边</span><br>
+                你以为拉上窗帘就<span style="color:red;">看</span>不到吗^^<br>
+                墙<span style="color:red;">壁</span>的缝隙、衣柜角落、门后黑影<br>
+                （字迹潦草扭曲）我一<span style="color:red;">直</span>在<span style="color:red;">看</span>你<br>
+                你被吓哭的样子，好可爱好想*哭你<br>
+                乱码：@%……&* 视线不会离开<br>
+                <span style="color:red;">别躲，跑不掉的</span><br>
+                <span style="color:red;">好喜欢小星星</span>好喜欢好喜欢……
+            </div>
+            <div class="page-next" id="toPage2">→</div>
+        </div>
+
+        <div class="diary-page2" id="diaryPage2">
+            <div class="diary-date">04.25 无天光</div>
+            <div class="diary-content">
+                昨晚小星星深夜起<span style="color:red;">夜</span>，我都记<span style="color:red;">下</span>了<br>
+                你回头的瞬间，我<span style="color:red;">藏</span>在暗处<br>
+                （反复涂改：<span style="color:red;">喜欢小星星</span>｜盯<span style="color:red;">你</span>｜<span style="color:red;">占有</span>）<br>
+                空房间的脚步声不是幻<span style="color:red;">觉</span><br>
+                是我在慢慢靠近你的每一寸空间<br>
+                <span style="color:red;">为什么不愿意说爱我？</span><br>
+                （墨迹晕开、断句破碎）<br>
+                回答我，小星星，必<span style="color:red;">须</span>回答我……
+            </div>
+            <div class="page-prev" id="toPage1">←</div>
+            <div class="page-next" id="toPage3">→</div>
+        </div>
+
+        <div class="diary-page3" id="diaryPage3">
+            <div class="diary-date">04.26 永夜</div>
+            <div class="diary-content">
+                我不允许小星星拥有除我之外的一切<br>
+                你的呼吸、身体、情绪都该属于我<br>
+                乖乖留在我身边<br>
+                永远、永远，只准看着我一个人<br>
+                <span style="color:red; font-size:22px; font-weight:bold;">我爱你^_^</span><br>
+                <span style="color:red; font-size:16px;">爱你</span>
+                <span style="color:red; font-size:18px;">爱你</span>
+                <span style="color:red; font-size:21px;">爱你</span>
+                <span style="color:red; font-size:24px;">爱......</span>
+            </div>
+            <div class="page-prev" id="toPage2Back">←</div>
+            <div class="page-next" id="toPage4">→</div>
+        </div>
+
+        <div class="diary-page4" id="diaryPage4">
+            <div class="diary-content">
+                <div style="color:#999;">又只有我自己了……</div>
+                <div style="color:#aaa; margin:15px 0;">小星星，你愿意成为我的唯一，永远陪着我吗？</div>
+                <button class="start-btn" id="agreeBtn">我愿意</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const questions = [
+            {
+                q: "1. 小星星，你此刻是一个人吗？",
+                opt: ["A. 是，独自一人", "B. 身边有人", "C. 在公共场所", "D. 不告诉你"]
+            },
+            {
+                q: "2. 你最近有没有觉得有人在暗中看着你？",
+                opt: ["A. 经常有这种感觉", "B. 偶尔会察觉", "C. 从来没有", "D. 希望有人在看"]
+            },
+            {
+                q: "3. 你觉得我了解你吗？",
+                opt: ["A. 不太了解", "B. 有一点了解", "C. 非常了解", "D. 你比我自己还了解我"]
+            },
+            {
+                q: "4. 如果我在你睡着时悄悄给你发消息，你会生气吗？",
+                opt: ["A. 会生气", "B. 有一点介意", "C. 不会生气", "D. 会很开心"]
+            },
+            {
+                q: "5. 你愿意告诉我你现在的真实心情吗？",
+                opt: ["A. 愿意分享", "B. 有点犹豫", "C. 不想说", "D. 看心情"]
+            },
+            {
+                q: "6. 小星星，你觉得爱是什么？",
+                opt: ["A. 占有与守护", "B. 理解与陪伴", "C. 说不清楚", "D. 偏执的凝视"]
+            },
+            {
+                q: "7. 如果我突然出现在你面前，你会有什么反应？",
+                opt: ["A. 尖叫逃跑", "B. 愣住不动", "C. 开心拥抱", "D. 假装没看见"]
+            },
+            {
+                q: "8. 你有没有注意到生活中一些无法解释的巧合？",
+                opt: ["A. 经常遇到", "B. 偶尔发生", "C. 从不相信", "D. 都是人为安排"]
+            },
+            {
+                q: "9. 你喜欢被人过度关注的感觉吗？",
+                opt: ["A. 非常厌恶", "B. 有点不适", "C. 无所谓", "D. 暗地里喜欢"]
+            },
+            {
+                q: "10. 小星星，你相信命中注定吗？",
+                opt: ["A. 完全相信", "B. 半信半疑", "C. 不相信", "D. 我们就是命中注定"]
+            },
+            {
+                q: "11. 如果我说我一直在看着你，你会害怕吗？",
+                opt: ["A. 非常害怕", "B. 有点毛骨悚然", "C. 觉得是玩笑", "D. 早就知道了"]
+            },
+            {
+                q: "12. 你晚上睡觉时会锁门吗？",
+                opt: ["A. 反复确认锁好", "B. 简单锁一下", "C. 从不锁门", "D. 开着门等我"]
+            },
+            {
+                q: "13. 你希望有人能完全掌控你的生活吗？",
+                opt: ["A. 绝对不希望", "B. 有一点抗拒", "C. 可以尝试", "D. 渴望被掌控"]
+            },
+            {
+                q: "14. 如果我在你耳边轻声说“你是我的”，你会怎么回应？",
+                opt: ["A. 推开我", "B. 沉默不语", "C. 说“我也是你的”", "D. 脸红心跳"]
+            },
+            {
+                q: "15. 你认为自己是一个容易被看透的人吗？",
+                opt: ["A. 深不可测", "B. 部分隐藏", "C. 透明简单", "D. 早被我看穿了"]
+            },
+            {
+                q: "16. 如果我每天记录你的行踪，你会觉得浪漫还是可怕？",
+                opt: ["A. 非常可怕", "B. 有点越界", "C. 挺浪漫的", "D. 这正是我需要的"]
+            },
+            {
+                q: "17. 你愿意对我开放你的全部隐私吗？",
+                opt: ["A. 绝对不愿意", "B. 可以分享部分", "C. 犹豫中", "D. 全部给你看"]
+            },
+            {
+                q: "18. 你觉得被一个人深深爱着和深深凝视着，有区别吗？",
+                opt: ["A. 完全不同", "B. 有点重叠", "C. 没有区别", "D. 爱就是凝视"]
+            },
+            {
+                q: "19. 如果我对你说“你逃不掉了”，你会怎么想？",
+                opt: ["A. 恐慌想要逃离", "B. 感到不安", "C. 以为在开玩笑", "D. 兴奋期待"]
+            },
+            {
+                q: "20. 小星星，你现在有没有一点点喜欢上这种被注视的感觉？",
+                opt: ["A. 完全没有", "B. 说不清楚", "C. 有一点点", "D. 已经上瘾了"]
+            },
+            {
+                q: "21. 你会为了我删除手机里所有异性的联系方式吗？",
+                opt: ["A. 绝对不会", "B. 考虑一下", "C. 愿意删掉", "D. 已经删干净了"]
+            },
+            {
+                q: "22. 如果我想在你的房间里装一个摄像头，你会同意吗？",
+                opt: ["A. 坚决反对", "B. 很犹豫", "C. 勉强同意", "D. 主动安装"]
+            },
+            {
+                q: "23. 你是否有过“这个世界只有我真正理解你”的念头？",
+                opt: ["A. 从来没有", "B. 偶尔闪过", "C. 经常这样想", "D. 只有你才懂我"]
+            },
+            {
+                q: "24. 如果爱是囚禁，你愿意被我囚禁吗？",
+                opt: ["A. 绝不接受", "B. 感到恐惧", "C. 可以考虑", "D. 我心甘情愿"]
+            },
+            {
+                q: "25. 你相信有某种力量，一直把你我连接在一起吗？",
+                opt: ["A. 完全不信", "B. 半信半疑", "C. 有点相信", "D. 深信不疑"]
+            },
+            {
+                q: "26. 如果我告诉你，这份问卷的每一题都在把你引向我，你还会继续吗？",
+                opt: ["A. 立即退出", "B. 有点犹豫", "C. 继续答题", "D. 早就在等你开口"]
+            },
+            {
+                q: "27. 你是不是已经开始期待接下来会发生什么？",
+                opt: ["A. 只想快点结束", "B. 有点好奇", "C. 很期待", "D. 已经等不及了"]
+            },
+            {
+                q: "28. 如果现在让你对我说一句话，你会说什么？",
+                opt: ["A. “放我走”", "B. “你是谁？”", "C. “我也在看你”", "D. “你终于来了”"]
+            },
+            {
+                q: "29. 你准备好把自己完全交给我了吗？",
+                opt: ["A. 永远不准备", "B. 还需要时间", "C. 差不多可以", "D. 现在就给你"]
+            },
+            {
+                q: "30. 最后，小星星，你愿意成为我的唯一，直到永远吗？",
+                opt: ["A. 不愿意", "B. 让我再想想", "C. 愿意", "D. 我早就是你的了"]
+            }
+        ];
+
+        let current = 0;
+        let answers = Array(questions.length).fill(null);
+        const total = questions.length;
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const optionsEl = document.getElementById('options');
+        const boxEl = document.querySelector('.box');
+        const mainBox = document.getElementById("mainBox");
+        const diaryWrap = document.getElementById("diaryWrap");
+        const diaryPage1 = document.getElementById("diaryPage1");
+        const diaryPage2 = document.getElementById("diaryPage2");
+        const diaryPage3 = document.getElementById("diaryPage3");
+        const diaryPage4 = document.getElementById("diaryPage4");
+
+        let fromQ4ToQ5 = false;
+        let q5Timer = null;
+        let q25Timer = null;
+        let q25Elements = [];
+        let grayMask = null;
+        let wrongCount = 0;
+        let q25Locked = false;
+
+        function clearAllEffects() {
+            if (current !== 24) stopQ25Effect();
+            if (q5Timer) clearTimeout(q5Timer);
+            document.querySelectorAll(
+                '.float-text,.terror-mask,.fullscreen-love,.start-modal,.q16-modal,.submit-modal,.black-screen,.black-full-text,.end-modal'
+            ).forEach(el => el.remove());
+            document.body.style.background = "#0a0a0f";
+            boxEl.style.opacity = "1";
+            prevBtn.disabled = false;
+            nextBtn.disabled = false;
+        }
+
+        function resetDiary() {
+            diaryPage1.style.display = "block";
+            diaryPage2.style.display = "none";
+            diaryPage3.style.display = "none";
+            diaryPage4.style.display = "none";
+            diaryWrap.style.display = "none";
+        }
+
+        function stopQ25Effect() {
+            if (q25Timer) clearInterval(q25Timer);
+            q25Elements.forEach(el => el.remove());
+            q25Elements = [];
+            if (grayMask) grayMask.remove();
+            grayMask = null;
+            q25Locked = false;
+            document.querySelectorAll('.option').forEach(opt => {
+                opt.classList.remove('locked');
+                opt.style.pointerEvents = 'auto';
+            });
+        }
+
+        function startQ25Effect() {
+            if (q25Locked) return;
+            stopQ25Effect();
+            q25Locked = true;
+            document.querySelectorAll('.option').forEach(opt => {
+                opt.classList.add('locked');
+                opt.style.pointerEvents = 'none';
+            });
+            grayMask = document.createElement('div');
+            grayMask.className = "q25-gray-mask";
+            document.body.appendChild(grayMask);
+
+            const peepArr = [
+                "我在看着小星星",
+                "不要躲开哦^^",
+                "我看见你了",
+                "你跑不掉的",
+                "我在你身边",
+                "我来找你了^^",
+                "你早就被盯上了",
+                "悄悄看着你",
+                "爱你爱你爱你",
+                "别离开视线",
+                "你逃不掉的",
+                "一直陪着你"
+            ];
+            q25Timer = setInterval(() => {
+                for (let i = 0; i < 15; i++) {
+                    const p = document.createElement('div');
+                    p.className = "peep-text";
+                    p.innerText = peepArr[Math.floor(Math.random() * peepArr.length)];
+                    p.style.left = Math.random() * 100 + "vw";
+                    p.style.top = Math.random() * 100 + "vh";
+                    document.body.appendChild(p);
+                    q25Elements.push(p);
+                }
+            }, 100);
+
+            setTimeout(() => stopQ25Effect(), 5000);
+        }
+
+        function openStartModal() {
+            clearAllEffects();
+            mainBox.style.display = "none";
+
+            const tipTexts = [
+                "<b>欢迎来到小星星的私密问卷</b>",
+                "<b>请根据你的真实感受回答</b>",
+                "<b>问卷包含特殊互动效果^_^</b>",
+                "<b>准备好了吗？小星星</b>"
+            ];
+            let idx = 0;
+            const modal = document.createElement("div");
+            modal.className = "start-modal";
+            const textDom = document.createElement("div");
+            textDom.className = "start-text";
+            textDom.innerHTML = tipTexts[idx];
+            const redTip = document.createElement("div");
+            redTip.className = "tiny-red-tip";
+            redTip.innerText = "注：含有微恐/窥视元素，如有不适请停止";
+            const btnDom = document.createElement("button");
+            btnDom.className = "start-btn";
+            btnDom.innerText = "继续";
+            btnDom.onclick = function() {
+                idx++;
+                if (idx < tipTexts.length) {
+                    textDom.innerHTML = tipTexts[idx];
+                    if (idx === tipTexts.length - 1) btnDom.innerText = "进入";
+                } else {
+                    modal.remove();
+                    mainBox.style.display = "flex";
+                    renderQuestion();
+                }
+            };
+            modal.appendChild(textDom);
+            modal.appendChild(redTip);
+            modal.appendChild(btnDom);
+            document.body.appendChild(modal);
+        }
+
+        function startQ5Effect() {
+            if (q5Timer) clearTimeout(q5Timer);
+            q5Timer = setTimeout(() => {
+                if (current !== 4) return;
+                const opts = document.querySelectorAll('.option');
+                const originalTexts = Array.from(opts).map(o => o.innerText);
+                opts.forEach(o => o.style.pointerEvents = "none");
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
+                setTimeout(() => opts[0].innerText = "小星星，等我好吗", 0);
+                setTimeout(() => opts[1].innerText = "小星星，等我好吗", 300);
+                setTimeout(() => opts[2].innerText = "小星星，等我好吗", 600);
+                setTimeout(() => opts[3].innerText = "小星星，等我好吗", 900);
+                setTimeout(() => {
+                    if (current !== 4) return;
+                    opts.forEach((o, i) => o.innerText = originalTexts[i]);
+                    opts.forEach(o => o.style.pointerEvents = "auto");
+                    prevBtn.disabled = current === 0;
+                    nextBtn.disabled = false;
+                }, 3000);
+            }, 1500);
+        }
+
+        const glitchChars = ["@#￥%", "……&*", "!@#$", "%^&*", "#￥%……", "&*^^", "@*&%", "#￥……&"];
+
+        function startQ8Effect(selectedIndex) {
+            document.body.style.background = "#200000";
+            boxEl.style.opacity = "0";
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            document.querySelectorAll('.option').forEach(o => o.style.pointerEvents = "none");
+
+            let textList = selectedIndex < 2 
+                ? ["小星星你注意到我了^^", "我好开心"] 
+                : ["小星星你是故意的吗^^", "我好难过"];
+
+            const created = [];
+            const timer = setInterval(() => {
+                for (let i = 0; i < 10; i++) {
+                    const el = document.createElement('div');
+                    el.className = "float-text";
+                    el.innerText = Math.random() > 0.5 
+                        ? textList[Math.floor(Math.random() * textList.length)] 
+                        : glitchChars[Math.floor(Math.random() * glitchChars.length)];
+                    el.style.left = (40 + Math.random() * 20) + "vw";
+                    el.style.top = (40 + Math.random() * 20) + "vh";
+                    el.style.fontSize = 12 + Math.random() * 16 + "px";
+                    document.body.appendChild(el);
+                    created.push(el);
+                }
+            }, 200);
+
+            setTimeout(() => {
+                clearInterval(timer);
+                created.forEach(e => e.remove());
+                document.body.style.background = "#0a0a0f";
+                boxEl.style.opacity = "1";
+                prevBtn.disabled = current === 0;
+                nextBtn.disabled = false;
+                document.querySelectorAll('.option').forEach(o => o.style.pointerEvents = "auto");
+                current++;
+                renderQuestion();
+            }, 5000);
+        }
+
+        function triggerTerror(text, nextQ) {
+            const mask = document.createElement('div');
+            mask.className = 'terror-mask';
+            const t = document.createElement('div');
+            t.className = 'terror-text';
+            mask.appendChild(t);
+            document.body.appendChild(mask);
+            let idx = 0;
+            function ty() {
+                if (idx < text.length) {
+                    t.innerText += text[idx];
+                    idx++;
+                    setTimeout(ty, 80);
+                } else {
+                    setTimeout(() => {
+                        let gt = setInterval(() => {
+                            t.innerText = t.innerText.split('').sort(() => Math.random() - 0.5).join('');
+                        }, 60);
+                        setTimeout(() => {
+                            clearInterval(gt);
+                            mask.remove();
+                            current = nextQ;
+                            renderQuestion();
+                        }, 600);
+                    }, 1000);
+                }
+            }
+            ty();
+        }
+
+        function startLoveTyping() {
+            boxEl.style.opacity = "0";
+            prevBtn.disabled = true;
+            nextBtn.disabled = true;
+            const el = docu
